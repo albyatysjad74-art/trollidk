@@ -17,29 +17,33 @@ jobs:
         run: |
           sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
 
-      - name: Compile Direct via Swiftc
+      - name: Compile Direct via Swiftc for iOS Device
         run: |
-          SDKPATH=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          SDKPATH=$(xcrun --sdk iphoneos --show-sdk-path)
           
           mkdir -p Payload/trollidk.app
           
-          swiftc -target arm64-apple-ios16.0-simulator \
+          swiftc -target arm64-apple-ios15.0 \
             -sdk "$SDKPATH" \
             -emit-executable \
             -o Payload/trollidk.app/trollidk \
             App.swift ContentView.swift IPAInjectorManager.swift DocumentPicker.swift
 
-      - name: Create Info.plist & Package IPA
+      - name: Create Complete Info.plist
         run: |
           cat <<EOF > Payload/trollidk.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>en</string>
               <key>CFBundleExecutable</key>
               <string>trollidk</string>
               <key>CFBundleIdentifier</key>
               <string>com.idk.trollidk</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
               <key>CFBundleName</key>
               <string>trollidk</string>
               <key>CFBundlePackageType</key>
@@ -48,12 +52,26 @@ jobs:
               <string>1.0</string>
               <key>CFBundleVersion</key>
               <string>1</string>
+              <key>LSRequiresIPhoneOS</key>
+              <true/>
               <key>MinimumOSVersion</key>
-              <string>16.0</string>
+              <string>15.0</string>
+              <key>UILaunchScreen</key>
+              <dict/>
+              <key>UIRequiredDeviceCapabilities</key>
+              <array>
+                  <string>arm64</string>
+              </array>
+              <key>UISupportedInterfaceOrientations</key>
+              <array>
+                  <string>UIInterfaceOrientationPortrait</string>
+              </array>
           </dict>
           </plist>
           EOF
 
+      - name: Package IPA
+        run: |
           zip -r trollidk.ipa Payload
 
       - name: Upload Artifact
