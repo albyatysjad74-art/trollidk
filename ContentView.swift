@@ -7,20 +7,18 @@ struct ContentView: View {
     @State private var showIPAPicker = false
     @State private var selectedTab = 0
     
-    // وقت متبقي / عداد التفعيل أو الجلسة
-    @State private var timeRemaining = 86400 // 24 ساعة بالثواني
+    // عداد الوقت المتبقي للجلسة (24 ساعة)
+    @State private var timeRemaining = 86400
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Tab 1: Injector Main Screen
             injectorView
                 .tabItem {
                     Label("الحاقن", systemImage: "syringe")
                 }
                 .tag(0)
 
-            // Tab 2: Tutorials & Guides
             tutorialsView
                 .tabItem {
                     Label("الشروحات", systemImage: "book.fill")
@@ -32,7 +30,8 @@ struct ContentView: View {
     }
 
     // MARK: - Injector Interface
-    var injectorView: View {
+    @ViewBuilder
+    var injectorView: some View {
         VStack(spacing: 20) {
             // Header
             VStack(spacing: 6) {
@@ -168,13 +167,14 @@ struct ContentView: View {
     }
 
     // MARK: - Tutorials View (قسم الشروحات)
-    var tutorialsView: View {
+    @ViewBuilder
+    var tutorialsView: some View {
         NavigationView {
             List {
                 Section(header: Text("خطوات الحقن الصحيحة")) {
                     TutorialRow(step: "1", title: "اختر ملف الأدوات (.dylib)", detail: "قم باختيار ملف الديلب المصمم لتطبيقك.")
                     TutorialRow(step: "2", title: "اختر ملف التطبيق (.ipa)", detail: "حدد التطبيق المراد دمجه وتعديله.")
-                    TutorialRow(step: "3", title: "اضغط بدء الحقن", detail: "انتظر حتى اكتمل شريط التقدم 100%.")
+                    TutorialRow(step: "3", title: "اضغط بدء الحقن", detail: "انتظر حتى يكتمل شريط التقدم 100%.")
                     TutorialRow(step: "4", title: "التوقيع والتثبيت", detail: "صدر الملف لـ E-Sign أو TrollStore وقم بالتثبيت المباشر.")
                 }
 
