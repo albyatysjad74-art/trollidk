@@ -13,16 +13,26 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Build Executable
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 'latest-stable'
+
+      - name: Build Executable with Xcodebuild
         run: |
-          swift build -c release --triple arm64-apple-ios15.0-simulator
+          xcodebuild build \
+            -scheme trollidk \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build_output \
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Packaging App
         run: |
-          mkdir -p Payload/trollidk.app
-          cp .build/arm64-apple-ios15.0-simulator/release/trollidk Payload/trollidk.app/trollidk
-          
-          # Create Info.plist
+          mkdir -p Payload
+          APP_PATH=$(find build_output -name "trollidk.app" | head -n 1)
+          cp -r "$APP_PATH" Payload/
+
+          # Ensure Info.plist is set correctly
           cat <<EOF > Payload/trollidk.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -34,7 +44,6 @@ jobs:
               <string>com.idk.trollidk</string>
               <key>CFBundleName</key>
               <string>trollidk</string>
-
               <key>CFBundlePackageType</key>
               <string>APPL</string>
               <key>CFBundleShortVersionString</key>
