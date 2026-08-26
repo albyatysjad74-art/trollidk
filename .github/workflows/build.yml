@@ -17,21 +17,20 @@ jobs:
         run: |
           sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
 
-      - name: Compile Executable
+      - name: Compile Direct via Swiftc
         run: |
           SDKPATH=$(xcrun --sdk iphonesimulator --show-sdk-path)
-          swift build -c release \
-            --triple arm64-apple-ios15.0-simulator \
-            -Xswiftc -sdk -Xswiftc "$SDKPATH"
-
-      - name: Package IPA
-        run: |
+          
           mkdir -p Payload/trollidk.app
           
-          # Copy Binary
-          cp .build/arm64-apple-ios15.0-simulator/release/trollidk Payload/trollidk.app/trollidk
+          swiftc -target arm64-apple-ios15.0-simulator \
+            -sdk "$SDKPATH" \
+            -emit-executable \
+            -o Payload/trollidk.app/trollidk \
+            ContentView.swift IPAInjectorManager.swift DocumentPicker.swift
 
-          # Create Plist
+      - name: Create Info.plist & Package IPA
+        run: |
           cat <<EOF > Payload/trollidk.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
