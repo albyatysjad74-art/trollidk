@@ -5,125 +5,224 @@ struct ContentView: View {
     @StateObject private var injector = IPAInjectorManager()
     @State private var showDylibPicker = false
     @State private var showIPAPicker = false
+    @State private var selectedTab = 0
     
+    // وقت متبقي / عداد التفعيل أو الجلسة
+    @State private var timeRemaining = 86400 // 24 ساعة بالثواني
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
     var body: some View {
-        NavigationView {
-            ZStack {
-                Color.black.ignoresSafeArea()
+        TabView(selection: $selectedTab) {
+            // Tab 1: Injector Main Screen
+            injectorView
+                .tabItem {
+                    Label("الحاقن", systemImage: "syringe")
+                }
+                .tag(0)
+
+            // Tab 2: Tutorials & Guides
+            tutorialsView
+                .tabItem {
+                    Label("الشروحات", systemImage: "book.fill")
+                }
+                .tag(1)
+        }
+        .accentColor(.blue)
+        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Injector Interface
+    var injectorView: View {
+        VStack(spacing: 20) {
+            // Header
+            VStack(spacing: 6) {
+                Text("Addons Injector Pro")
+                    .font(.largeTitle.bold())
                 
-                VStack(spacing: 30) {
-                    
-                    // Header Status
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Addons Injector")
-                            .font(.largeTitle)
-                            .bold()
-                            .foregroundColor(.white)
-                        
-                        Text(injector.statusMessage)
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(injector.statusMessage)
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
                     .padding(.horizontal)
-                    
-                    Spacer()
-                    
-                    // Main Action Buttons (Like TrollFools Layout)
-                    HStack(spacing: 20) {
-                        
-                        // Select Dylib Button
-                        Button(action: { showDylibPicker = true }) {
-                            VStack(spacing: 12) {
-                                Image(systemName: "syringe.fill")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(.green)
-                                Text(injector.selectedDylibURL == nil ? "Select Dylib" : "Dylib Loaded")
-                                    .font(.headline)
-                                    .foregroundColor(.green)
-                            }
-                            .frame(width: 150, height: 150)
-                            .background(Color(red: 0.05, green: 0.15, blue: 0.05))
-                            .cornerRadius(20)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .stroke(Color.green.opacity(0.3), lineWidth: 1)
-                            )
-                        }
-                        
-                        // Select IPA Button
-                        Button(action: { showIPAPicker = true }) {
-                            VStack(spacing: 12) {
-                                Image(systemName: "folder.badge.gearshape")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(.blue)
-                                Text(injector.selectedIPAURL == nil ? "Select IPA" : "IPA Loaded")
-                                    .font(.headline)
-                                    .foregroundColor(.blue)
-                            }
-                            .frame(width: 150, height: 150)
-                            .background(Color(red: 0.05, green: 0.1, blue: 0.2))
-                            .cornerRadius(20)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                            )
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    // Inject & Export Button
-                    if injector.isInjecting {
-                        ProgressView("Injecting Dylib into IPA...")
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .foregroundColor(.white)
-                    } else {
-                        Button(action: { injector.startInjectionProcess() }) {
-                            HStack {
-                                Image(systemName: "bolt.fill")
-                                Text("Inject & Generate IPA")
-                            }
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(injector.readyToInject ? Color.blue : Color.gray.opacity(0.3))
-                            .cornerRadius(12)
-                        }
-                        .disabled(!injector.readyToInject)
-                        .padding(.horizontal)
-                    }
-                    
-                    if let outputURL = injector.outputIPAURL {
-                        ShareLink(item: outputURL) {
-                            HStack {
-                                Image(systemName: "square.and.arrow.up")
-                                Text("Export Injected IPA to E-Sign")
-                            }
-                            .font(.headline)
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
-                            .cornerRadius(12)
-                        }
-                        .padding(.horizontal)
-                    }
+
+                // Timer Banner (الوقت المتبقي)
+                HStack {
+                    Image(systemName: "clock.fill")
+                        .foregroundColor(.orange)
+                    Text("الوقت المتبقي للجلسة: \(timeString(timeRemaining))")
+                        .font(.caption.bold())
+                        .foregroundColor(.orange)
                 }
-                .padding(.vertical)
-            }
-            .navigationBarHidden(true)
-            .sheet(isPresented: $showDylibPicker) {
-                DocumentPicker(allowedTypes: [UTType(filenameExtension: "dylib")!]) { url in
-                    injector.selectedDylibURL = url
+                .padding(.vertical, 6)
+                .padding(.horizontal, 12)
+                .background(Color.orange.opacity(0.15))
+                .cornerRadius(12)
+                .onReceive(timer) { _ in
+                    if timeRemaining > 0 {
+                        timeRemaining -= 1
+                    }
                 }
             }
-            .sheet(isPresented: $showIPAPicker) {
-                DocumentPicker(allowedTypes: [UTType(filenameExtension: "ipa")!]) { url in
-                    injector.selectedIPAURL = url
+            .padding(.top)
+
+            Spacer()
+
+            // File Pickers Grid
+            HStack(spacing: 16) {
+                // Dylib Button
+                Button(action: { showDylibPicker = true }) {
+                    VStack(spacing: 12) {
+                        Image(systemName: injector.selectedDylibURL == nil ? "syringe" : "checkmark.seal.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(injector.selectedDylibURL == nil ? .green : .white)
+                        
+                        Text(injector.selectedDylibURL == nil ? "اختيار Dylib" : injector.selectedDylibURL!.lastPathComponent)
+                            .font(.caption.bold())
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 120)
+                    .background(injector.selectedDylibURL == nil ? Color.green.opacity(0.15) : Color.green)
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.green, lineWidth: 2)
+                    )
                 }
+
+                // IPA Button
+                Button(action: { showIPAPicker = true }) {
+                    VStack(spacing: 12) {
+                        Image(systemName: injector.selectedIPAURL == nil ? "doc.badge.gearshape" : "checkmark.seal.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(injector.selectedIPAURL == nil ? .blue : .white)
+                        
+                        Text(injector.selectedIPAURL == nil ? "اختيار IPA" : injector.selectedIPAURL!.lastPathComponent)
+                            .font(.caption.bold())
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 120)
+                    .background(injector.selectedIPAURL == nil ? Color.blue.opacity(0.15) : Color.blue)
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.blue, lineWidth: 2)
+                    )
+                }
+            }
+            .padding(.horizontal)
+
+            if injector.isInjecting {
+                ProgressView(value: injector.progress)
+                    .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                    .padding(.horizontal)
+            }
+
+            Spacer()
+
+            // Action Buttons
+            VStack(spacing: 12) {
+                Button(action: { injector.startInjectionProcess() }) {
+                    HStack {
+                        Image(systemName: "bolt.fill")
+                        Text("بدء الحقن وتوليد IPA")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(injector.readyToInject && !injector.isInjecting ? Color.blue : Color.gray)
+                    .cornerRadius(14)
+                }
+                .disabled(!injector.readyToInject || injector.isInjecting)
+
+                if let outputURL = injector.outputIPAURL {
+                    ShareLink(item: outputURL) {
+                        HStack {
+                            Image(systemName: "square.and.arrow.up")
+                            Text("تصدير الـ IPA المحقون إلى E-Sign / TrollStore")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.green)
+                        .cornerRadius(14)
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom)
+        }
+        .sheet(isPresented: $showDylibPicker) {
+            DocumentPicker(allowedTypes: [.item]) { url in
+                injector.selectedDylibURL = url
             }
         }
+        .sheet(isPresented: $showIPAPicker) {
+            DocumentPicker(allowedTypes: [.item]) { url in
+                injector.selectedIPAURL = url
+            }
+        }
+    }
+
+    // MARK: - Tutorials View (قسم الشروحات)
+    var tutorialsView: View {
+        NavigationView {
+            List {
+                Section(header: Text("خطوات الحقن الصحيحة")) {
+                    TutorialRow(step: "1", title: "اختر ملف الأدوات (.dylib)", detail: "قم باختيار ملف الديلب المصمم لتطبيقك.")
+                    TutorialRow(step: "2", title: "اختر ملف التطبيق (.ipa)", detail: "حدد التطبيق المراد دمجه وتعديله.")
+                    TutorialRow(step: "3", title: "اضغط بدء الحقن", detail: "انتظر حتى اكتمل شريط التقدم 100%.")
+                    TutorialRow(step: "4", title: "التوقيع والتثبيت", detail: "صدر الملف لـ E-Sign أو TrollStore وقم بالتثبيت المباشر.")
+                }
+
+                Section(header: Text("حلول المشاكل الشائعة")) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("التطبيق يقفل بعد التثبيت؟")
+                            .font(.headline)
+                        Text("تأكد من تفعيل خيار Force Signature / Ad-Hoc أثناء التوقيع في تطبيق E-Sign أو K-Sign.")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .navigationTitle("شروحات وتعليمات")
+        }
+    }
+
+    func timeString(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        let secs = seconds % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, secs)
+    }
+}
+
+struct TutorialRow: View {
+    let step: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Text(step)
+                .font(.title3.bold())
+                .foregroundColor(.blue)
+                .frame(width: 32, height: 32)
+                .background(Color.blue.opacity(0.15))
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
