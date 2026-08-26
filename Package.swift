@@ -10,7 +10,9 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "trollidk",
-            path: "."
+            path: ".",
+            exclude: ["README.md"],
+            sources: ["ContentView.swift", "IPAInjectorManager.swift", "DocumentPicker.swift"]
         )
     ]
-)
+]
