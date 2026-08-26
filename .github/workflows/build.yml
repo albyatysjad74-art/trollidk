@@ -1,0 +1,56 @@
+name: Build trollidk IPA
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Executable
+        run: |
+          swift build -c release --triple arm64-apple-ios15.0-simulator
+
+      - name: Packaging App
+        run: |
+          mkdir -p Payload/trollidk.app
+          cp .build/arm64-apple-ios15.0-simulator/release/trollidk Payload/trollidk.app/trollidk
+          
+          # Create Info.plist
+          cat <<EOF > Payload/trollidk.app/Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>trollidk</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.idk.trollidk</string>
+              <key>CFBundleName</key>
+              <string>trollidk</string>
+
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>MinimumOSVersion</key>
+              <string>15.0</string>
+          </dict>
+          </plist>
+          EOF
+
+          zip -r trollidk.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trollidk-IPA
+          path: trollidk.ipa
